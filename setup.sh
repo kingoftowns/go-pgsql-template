@@ -40,8 +40,8 @@ prompt_input() {
         fi
     done
     
-    # Store in global variable
-    declare -g "$var_name"="$value"
+    # Store in global variable (use eval for compatibility)
+    eval "$var_name=\"\$value\""
 }
 
 # Collect user input
@@ -49,11 +49,14 @@ echo -e "${BLUE}Please provide the following information:${NC}"
 echo ""
 
 prompt_input "Go module name (e.g., github.com/yourusername/your-api)" "" "MODULE_NAME"
-prompt_input "Project display name (e.g., My Product API)" "" "PROJECT_NAME"  
-prompt_input "Service name for logging (e.g., my-product-api)" "" "SERVICE_NAME"
-prompt_input "API title for Swagger (e.g., Product Management API)" "" "API_TITLE"
-prompt_input "API description (e.g., API for managing product inventory)" "" "API_DESCRIPTION"
-prompt_input "Database name" "products_db" "DB_NAME"
+prompt_input "Display name (e.g., My Product API)" "" "DISPLAY_NAME"
+
+# Derive other values from the two inputs
+PROJECT_NAME="$DISPLAY_NAME"
+SERVICE_NAME="$MODULE_NAME"
+API_TITLE="$DISPLAY_NAME"
+API_DESCRIPTION="API for $DISPLAY_NAME"
+DB_NAME="${MODULE_NAME//-/_}"
 
 echo ""
 echo -e "${BLUE}Summary of your configuration:${NC}"
@@ -120,12 +123,27 @@ go mod tidy
 
 # Generate Swagger documentation
 echo -e "${YELLOW}Generating Swagger documentation...${NC}"
+# Clean existing generated docs completely
+rm -rf docs/
+mkdir docs
 if command -v swag &> /dev/null; then
     swag init -g cmd/api/main.go
+    echo -e "${GREEN}✓ Swagger documentation generated${NC}"
+elif command -v $HOME/go/bin/swag &> /dev/null; then
+    $HOME/go/bin/swag init -g cmd/api/main.go
     echo -e "${GREEN}✓ Swagger documentation generated${NC}"
 else
     echo -e "${YELLOW}⚠ swag not found. Install it with: go install github.com/swaggo/swag/cmd/swag@latest${NC}"
     echo -e "${YELLOW}  Then run: swag init -g cmd/api/main.go${NC}"
+fi
+
+# Add swagger generated files to .gitignore
+echo -e "${YELLOW}Updating .gitignore...${NC}"
+if ! grep -q "docs/swagger.json" .gitignore 2>/dev/null; then
+    echo "" >> .gitignore
+    echo "# Generated Swagger documentation" >> .gitignore
+    echo "docs/swagger.json" >> .gitignore
+    echo "docs/swagger.yaml" >> .gitignore
 fi
 
 # Clean up
