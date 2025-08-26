@@ -101,6 +101,7 @@ files_to_update=(
     "internal/config/config.go"
     "internal/handlers/product.go"
     "internal/repository/product.go"
+    "internal/repository/product_test.go"
     "internal/router/router.go"
     ".devcontainer/devcontainer.json"
     ".devcontainer/docker-compose.yml"
